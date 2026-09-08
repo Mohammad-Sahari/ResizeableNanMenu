@@ -1,0 +1,207 @@
+﻿@inherits LayoutComponentBase
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<MudThemeProvider Theme="@_theme" IsDarkMode="_isDarkMode" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+<MudLayout Style="@($"--mud-drawer-width-left: {_drawerWidth}px")">
+    <MudAppBar Elevation="1">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
+        <MudText Typo="Typo.h5" Class="ml-3">Application</MudText>
+        <MudSpacer />
+        <MudIconButton Icon="@(DarkLightModeButtonIcon)" Color="Color.Inherit" OnClick="@DarkModeToggle" />
+        <MudIconButton Icon="@Icons.Material.Filled.MoreVert" Color="Color.Inherit" Edge="Edge.End" />
+    </MudAppBar>
+    <MudDrawer id="nav-drawer"
+               @bind-Open="_drawerOpen"
+               Anchor="Anchor.Start"
+               Variant="DrawerVariant.Responsive"
+               ClipMode="DrawerClipMode.Always"
+               Elevation="2"
+               Width="@($"{_drawerWidth}px")"
+               Class="resizable-nav-drawer">
+        <div class="drawer-scroll">
+            <MudDrawerHeader>
+                <MudText Typo="Typo.h6">My App</MudText>
+            </MudDrawerHeader>
+            <NavMenu />
+        </div>
+        <div @ref="_resizeHandle"
+             class="drawer-resize-handle"
+             role="separator"
+             aria-orientation="vertical"
+             aria-label="Resize navigation drawer"
+             aria-valuemin="@MinDrawerWidth"
+             aria-valuemax="@MaxDrawerWidth"
+             aria-valuenow="@_drawerWidth"></div>
+    </MudDrawer>
+    <MudMainContent Class="pt-16 pa-4">
+        @Body
+    </MudMainContent>
+</MudLayout>
+
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+@code {
+    private const double DefaultDrawerWidth = 300;
+    private const double MinDrawerWidth = 200;
+    private const double MaxDrawerWidth = 600;
+    private const double MinMainContentWidth = 360;
+
+    private bool _drawerOpen = true;
+    private bool _isDarkMode = true;
+    private MudTheme? _theme = null;
+    private double _drawerWidth = DefaultDrawerWidth;
+    private ElementReference _resizeHandle;
+    private IJSObjectReference? _resizeModule;
+    private IJSObjectReference? _resizeHandleJs;
+    private DotNetObjectReference<MainLayout>? _dotNetRef;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        _theme = new()
+        {
+            PaletteLight = _lightPalette,
+            PaletteDark = _darkPalette,
+            LayoutProperties = new LayoutProperties()
+        };
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        try
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            _resizeModule = await JS.InvokeAsync<IJSObjectReference>(
+                "import",
+                "./Components/Layout/MainLayout.razor.js");
+            _resizeHandleJs = await _resizeModule.InvokeAsync<IJSObjectReference>(
+                "attach",
+                _resizeHandle,
+                _dotNetRef,
+                new
+                {
+                    minWidth = MinDrawerWidth,
+                    maxWidth = MaxDrawerWidth,
+                    minMainContentWidth = MinMainContentWidth,
+                    defaultWidth = DefaultDrawerWidth,
+                    cssVariable = "--mud-drawer-width-left"
+                });
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+    }
+
+    [JSInvokable]
+    public Task OnDrawerResized(double width)
+    {
+        var rounded = Math.Round(width);
+        if (Math.Abs(_drawerWidth - rounded) < 0.5)
+        {
+            return Task.CompletedTask;
+        }
+
+        _drawerWidth = rounded;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private void DrawerToggle()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_resizeHandleJs is not null)
+        {
+            try
+            {
+                await _resizeHandleJs.InvokeVoidAsync("dispose");
+                await _resizeHandleJs.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+            }
+        }
+
+        if (_resizeModule is not null)
+        {
+            try
+            {
+                await _resizeModule.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+            }
+        }
+
+        _dotNetRef?.Dispose();
+    }
+
+    private void DarkModeToggle()
+    {
+        _isDarkMode = !_isDarkMode;
+    }
+
+    private readonly PaletteLight _lightPalette = new()
+    {
+        Black = "#110e2d",
+        AppbarText = "#424242",
+        AppbarBackground = "rgba(255,255,255,0.8)",
+        DrawerBackground = "#ffffff",
+        GrayLight = "#e8e8e8",
+        GrayLighter = "#f9f9f9",
+    };
+
+    private readonly PaletteDark _darkPalette = new()
+    {
+        Primary = "#7e6fff",
+        Surface = "#1e1e2d",
+        Background = "#1a1a27",
+        BackgroundGray = "#151521",
+        AppbarText = "#92929f",
+        AppbarBackground = "rgba(26,26,39,0.8)",
+        DrawerBackground = "#1a1a27",
+        ActionDefault = "#74718e",
+        ActionDisabled = "#9999994d",
+        ActionDisabledBackground = "#605f6d4d",
+        TextPrimary = "#b2b0bf",
+        TextSecondary = "#92929f",
+        TextDisabled = "#ffffff33",
+        DrawerIcon = "#92929f",
+        DrawerText = "#92929f",
+        GrayLight = "#2a2833",
+        GrayLighter = "#1e1e2d",
+        Info = "#4a86ff",
+        Success = "#3dcb6c",
+        Warning = "#ffb545",
+        Error = "#ff3f5f",
+        LinesDefault = "#33323e",
+        TableLines = "#33323e",
+        Divider = "#292838",
+        OverlayLight = "#1e1e2d80",
+    };
+
+    public string DarkLightModeButtonIcon => _isDarkMode switch
+    {
+        true => Icons.Material.Rounded.AutoMode,
+        false => Icons.Material.Outlined.DarkMode,
+    };
+}
+
+

@@ -1,0 +1,55 @@
+::deep .resizable-nav-drawer {
+    overflow: hidden;
+}
+
+.drawer-scroll {
+    flex: 1 1 auto;
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.drawer-resize-handle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 5;
+    width: 8px;
+    height: 100%;
+    cursor: col-resize;
+    touch-action: none;
+    user-select: none;
+}
+
+.drawer-resize-handle::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 2px;
+    height: 100%;
+    background: transparent;
+    transition: background-color 150ms ease;
+}
+
+.drawer-resize-handle:hover::after,
+.drawer-resize-handle:focus-visible::after,
+.drawer-resize-handle:active::after {
+    background-color: var(--mud-palette-primary);
+}
+
+.drawer-resize-handle:focus-visible {
+    outline: none;
+}
+
+::deep .drawer-is-resizing .mud-drawer,
+::deep .drawer-is-resizing .mud-main-content,
+::deep .drawer-is-resizing .mud-appbar {
+    transition: none !important;
+}
+
+@media (max-width: 959.95px) {
+    .drawer-resize-handle {
+        display: none;
+    }
+}
